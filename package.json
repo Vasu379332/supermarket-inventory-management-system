@@ -1,0 +1,14 @@
+{
+  "name": "inventory-management-system",
+  "version": "1.0.0",
+  "description": "Supermarket Inventory Management System",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm.cmd install && npm.cmd install --prefix backend && npm.cmd install --prefix frontend",
+    "dev": "concurrently \"npm.cmd run dev --prefix backend\" \"npm.cmd run dev --prefix frontend\"",
+    "build:all": "npm.cmd run build --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

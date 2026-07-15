@@ -1,0 +1,37 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Item {
+  id                String        @id @default(uuid())
+  name              String
+  barcode           String?       @unique
+  category          String
+  costPrice         Decimal
+  salePrice         Decimal
+  quantity          Int           @default(0)
+  reorderThreshold  Int           @default(5)
+  expiryDate        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  transactions      Transaction[]
+
+  @@map("items")
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  itemId    String   @map("item_id")
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type      String   // 'in' or 'out'
+  quantity  Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@map("transactions")
+}
