@@ -12,5 +12,8 @@
       "source": "/api/(.*)",
       "destination": "https://inventory-management-system-tz0i.onrender.com/api/$1"
     }
-  ]
+  ],
+  "env": {
+    "VITE_API_URL": "https://inventory-management-system-tz0i.onrender.com"
+  }
 }

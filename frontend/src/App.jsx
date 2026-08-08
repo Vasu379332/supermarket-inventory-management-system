@@ -75,6 +75,9 @@ const defaultCategories = [
   'Household',
 ];
 
+const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+const api = (path) => (path.startsWith('/api') ? `${apiBaseUrl}${path}` : path);
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [items, setItems] = useState([]);
@@ -135,7 +138,7 @@ export default function App() {
   // Fetch functions
   const loadDashboard = async () => {
     try {
-      const res = await fetch('/api/dashboard');
+      const res = await fetch(api('/api/dashboard'));
       if (!res.ok) throw new Error('Failed to load dashboard data');
       const data = await res.json();
       setDashboardData(data);
@@ -150,7 +153,7 @@ export default function App() {
     setError(null);
     try {
       const url = `/api/items?page=${page}&limit=15&search=${encodeURIComponent(search)}&category=${encodeURIComponent(cat)}`;
-      const res = await fetch(url);
+      const res = await fetch(api(url));
       if (!res.ok) throw new Error('Failed to load catalog');
       const data = await res.json();
       setItems(data.items);
@@ -172,7 +175,7 @@ export default function App() {
   ) => {
     try {
       const url = `/api/transactions?page=${page}&type=${type}&startDate=${start}&endDate=${end}&search=${encodeURIComponent(search)}`;
-      const res = await fetch(url);
+      const res = await fetch(api(url));
       if (!res.ok) throw new Error('Failed to load transactions');
       const data = await res.json();
       setTransactions(data.transactions);
@@ -233,7 +236,7 @@ export default function App() {
     }
     const delayDebounce = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/items?search=${encodeURIComponent(stockSearchQuery)}`);
+        const res = await fetch(api(`/api/items?search=${encodeURIComponent(stockSearchQuery)}`));
         if (res.ok) {
           const data = await res.json();
           setStockSearchResults(data.slice(0, 5));
@@ -251,7 +254,7 @@ export default function App() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('/api/items', {
+      const res = await fetch(api('/api/items'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -281,7 +284,7 @@ export default function App() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch(`/api/items/${selectedItem.id}`, {
+      const res = await fetch(api(`/api/items/${selectedItem.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,7 +314,7 @@ export default function App() {
     if (!window.confirm('Are you sure you want to delete this product? All transaction history for it will be lost.')) return;
     setError(null);
     try {
-      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
+      const res = await fetch(api(`/api/items/${id}`), { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete item');
 
@@ -343,7 +346,7 @@ export default function App() {
       : { quantity: qty };
 
     try {
-      const res = await fetch(`/api/items/${selectedStockItem.id}/${endpoint}`, {
+      const res = await fetch(api(`/api/items/${selectedStockItem.id}/${endpoint}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -414,7 +417,7 @@ export default function App() {
   };
 
   const handleExportCatalogCSV = () => {
-    fetch(`/api/items?search=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(categoryFilter)}`)
+    fetch(api(`/api/items?search=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(categoryFilter)}`))
       .then(res => res.json())
       .then(data => {
         const headers = ['Product Name', 'Barcode', 'Category', 'Cost Price ($)', 'Sale Price ($)', 'Stock Quantity', 'Reorder Threshold', 'Expiry Date'];
@@ -446,7 +449,7 @@ export default function App() {
   };
 
   const handleExportTransactionsCSV = () => {
-    fetch(`/api/transactions?limit=10000&type=${txFilterType}&startDate=${txStartDate}&endDate=${txEndDate}&search=${encodeURIComponent(txSearch)}`)
+    fetch(api(`/api/transactions?limit=10000&type=${txFilterType}&startDate=${txStartDate}&endDate=${txEndDate}&search=${encodeURIComponent(txSearch)}`))
       .then(res => res.json())
       .then(data => {
         const headers = ['Timestamp', 'Product Name', 'Barcode', 'Type', 'Quantity', 'Note / Details', 'Transaction ID'];
