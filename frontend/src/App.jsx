@@ -97,6 +97,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [isBackendWakingUp, setIsBackendWakingUp] = useState(false);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,20 +136,27 @@ export default function App() {
   const [stockQty, setStockQty] = useState('');
   const [supplierNote, setSupplierNote] = useState('');
 
-  // Fetch functions
-  const loadDashboard = async () => {
+  // Fetch functions with auto-retry for Render wake-up
+  const loadDashboard = async (retryCount = 0) => {
     try {
       const res = await fetch(api('/api/dashboard'));
       if (!res.ok) throw new Error('Failed to load dashboard data');
       const data = await res.json();
       setDashboardData(data);
+      setIsBackendWakingUp(false);
     } catch (err) {
       console.error(err);
-      setError('Could not retrieve dashboard metrics');
+      if (retryCount < 4) {
+        setIsBackendWakingUp(true);
+        setTimeout(() => loadDashboard(retryCount + 1), 3500);
+      } else {
+        setIsBackendWakingUp(false);
+        setError('Could not retrieve dashboard metrics. If backend is waking up, please wait a moment and refresh.');
+      }
     }
   };
 
-  const loadItems = async (page = catalogPage, search = searchQuery, cat = categoryFilter) => {
+  const loadItems = async (page = catalogPage, search = searchQuery, cat = categoryFilter, retryCount = 0) => {
     setLoading(true);
     setError(null);
     try {
@@ -158,9 +166,16 @@ export default function App() {
       const data = await res.json();
       setItems(data.items);
       setCatalogPagination(data.pagination);
+      setIsBackendWakingUp(false);
     } catch (err) {
       console.error(err);
-      setError('Failed to retrieve product list');
+      if (retryCount < 3) {
+        setIsBackendWakingUp(true);
+        setTimeout(() => loadItems(page, search, cat, retryCount + 1), 3500);
+      } else {
+        setIsBackendWakingUp(false);
+        setError('Failed to retrieve product list. Backend may be waking up, please wait a moment.');
+      }
     } finally {
       setLoading(false);
     }
@@ -171,7 +186,8 @@ export default function App() {
     type = txFilterType,
     start = txStartDate,
     end = txEndDate,
-    search = txSearch
+    search = txSearch,
+    retryCount = 0
   ) => {
     try {
       const url = `/api/transactions?page=${page}&type=${type}&startDate=${start}&endDate=${end}&search=${encodeURIComponent(search)}`;
@@ -182,7 +198,11 @@ export default function App() {
       setPagination(data.pagination);
     } catch (err) {
       console.error(err);
-      setError('Failed to retrieve activity log');
+      if (retryCount < 3) {
+        setTimeout(() => loadTransactions(page, type, start, end, search, retryCount + 1), 3500);
+      } else {
+        setError('Failed to retrieve activity log');
+      }
     }
   };
 
@@ -547,6 +567,12 @@ export default function App() {
       {/* Main Content Area */}
       <main className="main-content">
         {/* Global Notifications */}
+        {isBackendWakingUp && (
+          <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>⏳</span>
+            <span>Connecting to Render backend (free instance may take ~30-50s to wake up on first visit)...</span>
+          </div>
+        )}
         {error && <div className="alert alert-danger">{error}</div>}
         {successMsg && <div className="alert alert-success">{successMsg}</div>}
 

@@ -1,15 +1,23 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./dev.db';
+}
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 // Helper to convert Prisma Decimal fields to normal floats for ease of frontend use
@@ -549,11 +557,69 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
+// Database self-healing initialization helper
+const ensureDatabaseReady = async () => {
+  try {
+    const count = await prisma.item.count();
+    console.log(`Database tables verified. Current item count: ${count}`);
+    if (count === 0) {
+      console.log('Database has no items. Seeding sample data...');
+      execSync('node prisma/seed.js', {
+        stdio: 'inherit',
+        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db' },
+      });
+      console.log('Sample data seeded successfully.');
+    }
+  } catch (err) {
+    console.warn('Database tables not found. Automatically initializing SQLite schema with prisma db push...');
+    try {
+      execSync('npx prisma db push --accept-data-loss', {
+        stdio: 'inherit',
+        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db' },
+      });
+      console.log('Prisma schema pushed successfully.');
+      const count = await prisma.item.count();
+      if (count === 0) {
+        console.log('Seeding initial items...');
+        execSync('node prisma/seed.js', {
+          stdio: 'inherit',
+          env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db' },
+        });
+        console.log('Sample items seeded successfully.');
+      }
+    } catch (pushErr) {
+      console.error('Failed to auto-initialize database:', pushErr.message);
+    }
+  }
+};
+
 // Root check
 app.get('/', (req, res) => {
   res.json({ message: 'Inventory Management API is running' });
 });
 
-app.listen(PORT, () => {
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const itemCount = await prisma.item.count();
+    res.json({ status: 'ok', database: 'connected', itemCount });
+  } catch (err) {
+    res.status(500).json({ status: 'error', database: 'disconnected', error: err.message });
+  }
+});
+
+// Manual db init trigger endpoint
+app.get('/api/init-db', async (req, res) => {
+  try {
+    await ensureDatabaseReady();
+    const itemCount = await prisma.item.count();
+    res.json({ success: true, message: 'Database ready', itemCount });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
+  await ensureDatabaseReady();
 });
