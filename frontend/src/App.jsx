@@ -75,7 +75,7 @@ const defaultCategories = [
   'Household',
 ];
 
-const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'https://inventory-management-system-zk2j.onrender.com').replace(/\/$/, '');
 const api = (path) => (path.startsWith('/api') ? `${apiBaseUrl}${path}` : path);
 
 export default function App() {
