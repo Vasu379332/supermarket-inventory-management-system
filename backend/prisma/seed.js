@@ -6,7 +6,6 @@ async function main() {
   console.log('Clearing database...');
   await prisma.transaction.deleteMany();
   await prisma.item.deleteMany();
-
   console.log('Seeding items...');
 
   const today = new Date();
